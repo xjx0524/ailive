@@ -31,6 +31,12 @@ device = config.webui_config.device
 if device == "mps":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
+hps = utils.get_hparams_from_file(config.webui_config.config_path)
+# 若config.json中未指定版本则默认为最新版本
+version = hps.version if hasattr(hps, "version") else latest_version
+net_g = get_net_g(
+    model_path=config.webui_config.model, version=version, device=device, hps=hps
+)
 
 def generate_audio(
     slices,
@@ -214,7 +220,7 @@ def process_auto(text):
         if slice == "":
             continue
         temp_text, temp_lang = [], []
-        sentences_list = split_by_language(slice, target_languages=["zh", "ja", "en"])
+        sentences_list = split_by_language(slice, target_languages=["zh", "en"])
         for sentence, lang in sentences_list:
             if sentence == "":
                 continue
