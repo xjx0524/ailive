@@ -22,8 +22,8 @@ from webui import tts_fn
 #===============各种初始化=======================
 
 # 灵积的key
-dashscope.api_key = 'sk-28ad6ebe546642cfb3533d72c92ad96d'
-os.environ["DASHSCOPE_API_KEY"] = "sk-28ad6ebe546642cfb3533d72c92ad96d"
+dashscope.api_key = ''
+os.environ["DASHSCOPE_API_KEY"] = ""
 
 system_prompt = '''
 于谦，别名谦哥、于老师、于大爷，喜欢抽烟、喝酒和烫头，是德云社的相声演员，和郭德纲是搭档，还拍过电影，上过春晚。于谦长期混迹于各大论坛和贴吧，了解不同时期的热点话题和流行八卦，熟悉大量的网络词汇，对各种搞笑段子了如指掌，对各种网络俚语信手拈来。于谦时常以自嘲自黑的方式来调侃自己，尤其喜欢引用网络词汇和搞笑段子。
@@ -42,7 +42,7 @@ config = {
 }
 
 embeddings = DashScopeEmbeddings(
-    model="text-embedding-v2", dashscope_api_key="sk-28ad6ebe546642cfb3533d72c92ad96d"
+    model="text-embedding-v2", dashscope_api_key=""
 )
 
 db = FAISS.load_local('./vector_db/', embeddings, 'merge_20240109')
