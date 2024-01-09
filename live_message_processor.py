@@ -8,6 +8,7 @@ from typing import *
 from live_handler import InteractWordMessage
 import blivedm.models.web as web_models
 import ai_utils
+from live_message_type import LiveMessageType
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -138,12 +139,48 @@ class LiveEntryProcess(mp.Process):
             except Exception as e:
                 print(e)
 
+class LiveEntryCommonProcess(mp.Process):
+    def __init__(self, queue: mp.Queue, qout: mp.Queue):
+        super().__init__()
+        self.queue = queue
+        self.qout = qout
+        self.cold_time_ts = time.time()
+        self.cold_time_gap = 90
+
+    def run(self):
+        logger.info(str(self.__class__) + ' start.')
+        while True:
+            try:
+                data = self.queue.get_nowait()
+                if data is None:
+                    logger.info("exit by None!")
+                    break  # 使用 None 作为停止信号
+                logger.info(data)
+                msg_type, message = data
+                if msg_type == LiveMessageType.COMMENT:
+                    query = f'{message.nickname}说：{message.message}'
+                    self.qout.put_nowait((query, True))
+                elif msg_type == LiveMessageType.FOLLOW:
+                    ans = f'{message.nickname}关注了直播间，哈哈，你真是有眼光啊！'
+                    self.qout.put_nowait((ans, False))
+                else:
+                    pass
+                self.cold_time_ts = time.time()
+            except queue.Empty:
+                if time.time() - self.cold_time_ts >= self.cold_time_gap:
+                    # query = '没人说话，你随便说点啥'
+                    # self.qout.put_nowait((query, True))
+                    self.cold_time_ts = time.time()
+            except Exception as e:
+                print(e)
 
 class ChatProcess(mp.Process):
     def __init__(self, queue: mp.Queue, qout: mp.Queue):
         super().__init__()
         self.queue = queue
         self.qout = qout
+        self.chat_history = []
+        self.chat_max_size = 6
 
     def run(self):
         logger.info(str(self.__class__) + ' start.')
@@ -154,14 +191,21 @@ class ChatProcess(mp.Process):
                     logger.info("exit by None!")
                     self.qout.put_nowait(None)
                     break  # 使用 None 作为停止信号
-                query, history, needAnswer = message
+                query, needAnswer = message
+                if query == "Vurtne说：flush":
+                    self.chat_history = []
+                    logger.info("chat_history clear!")
+                    continue
                 if needAnswer:
-                    ans = ai_utils.chat(query, history)
+                    ans = ai_utils.chat_rag(query, self.chat_history)
                     logger.info(f'[chat]{query}_|_{ans}')
+                    self.chat_history.append((query, ans))
                 else:
                     ans = query
                     logger.info(f'[say]{ans}')
                 self.qout.put(ans)
+                if len(self.chat_history) > self.chat_max_size:
+                    self.chat_history = self.chat_history[-self.chat_max_size:]
             except Exception as e:
                 logger.error(e)
 
